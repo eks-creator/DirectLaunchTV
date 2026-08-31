@@ -61,7 +61,8 @@
 
         <service
             android:name=".RemoteShortcutService"
-            android:exported="false"
+            android:enabled="true"
+            android:exported="true"
             android:label="DirectLaunch Remote Shortcut"
             android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE">
             <intent-filter>
