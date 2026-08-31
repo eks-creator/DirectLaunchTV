@@ -33,6 +33,12 @@ jobs:
         with:
           gradle-version: '8.9'
 
+      - name: Install stable debug signing key
+        run: |
+          mkdir -p "$HOME/.android"
+          base64 --decode signing/directlaunch-debug.keystore.b64 > "$HOME/.android/debug.keystore"
+          chmod 600 "$HOME/.android/debug.keystore"
+
       - name: Build debug APK
         run: gradle --no-daemon :app:assembleDebug
 
@@ -53,6 +59,7 @@ jobs:
         run: |
           if gh release view latest >/dev/null 2>&1; then
             gh release upload latest DirectLaunchTV.apk --clobber
+            gh release edit latest --notes "DirectLaunch TV 0.2.0. Fixes Google TV target-app selection and accessibility remote-shortcut activation. Debug-signed for sideloading."
           else
-            gh release create latest DirectLaunchTV.apk --title "DirectLaunch TV" --notes "Public installable APK for DirectLaunch TV. This build is debug-signed for sideloading on Android TV / Google TV."
+            gh release create latest DirectLaunchTV.apk --title "DirectLaunch TV" --notes "DirectLaunch TV 0.2.0. Fixes Google TV target-app selection and accessibility remote-shortcut activation. Debug-signed for sideloading."
           fi
