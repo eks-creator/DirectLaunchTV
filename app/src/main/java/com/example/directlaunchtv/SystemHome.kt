@@ -29,7 +29,19 @@ object SystemHome {
         return ComponentName(selected.activityInfo.packageName, selected.activityInfo.name)
     }
 
-    fun open(context: Context): Boolean {
+    fun isSystemHomePackage(context: Context, packageName: String): Boolean {
+        if (packageName == context.packageName) return false
+        val pm = context.packageManager
+        val homeIntent = Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME)
+        return pm.queryIntentActivities(homeIntent, PackageManager.MATCH_ALL).any {
+            it.activityInfo.packageName == packageName
+        } || packageName == "com.google.android.apps.tv.launcherx" ||
+            packageName == "com.google.android.tungsten.setupwraith" ||
+            packageName == "com.google.android.tvlauncher"
+    }
+
+    fun open(context: Context, bypassMs: Long = 60000L): Boolean {
+        Config.allowGoogleTvTemporarily(context, bypassMs)
         val component = findSystemHome(context)
         if (component != null) {
             return runCatching {
