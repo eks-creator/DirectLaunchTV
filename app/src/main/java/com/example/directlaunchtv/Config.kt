@@ -15,6 +15,7 @@ object Config {
     const val KEY_SHORTCUT_KEYCODE = "shortcut_keycode"
     const val KEY_SHORTCUT_PRESS_COUNT = "shortcut_press_count"
     const val KEY_SHORTCUT_WINDOW_MS = "shortcut_window_ms"
+    const val KEY_GOOGLE_TV_BYPASS_UNTIL = "google_tv_bypass_until"
 
     fun prefs(context: Context) = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
 
@@ -41,4 +42,13 @@ object Config {
 
     fun shortcutWindowMs(context: Context): Long =
         prefs(context).getLong(KEY_SHORTCUT_WINDOW_MS, 1800L).coerceIn(500L, 5000L)
+
+    fun allowGoogleTvTemporarily(context: Context, durationMs: Long = 60000L) {
+        prefs(context).edit()
+            .putLong(KEY_GOOGLE_TV_BYPASS_UNTIL, System.currentTimeMillis() + durationMs)
+            .apply()
+    }
+
+    fun googleTvBypassActive(context: Context): Boolean =
+        prefs(context).getLong(KEY_GOOGLE_TV_BYPASS_UNTIL, 0L) > System.currentTimeMillis()
 }
