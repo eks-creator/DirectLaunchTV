@@ -1,6 +1,7 @@
 package com.example.directlaunchtv
 
 import android.accessibilityservice.AccessibilityService
+import android.accessibilityservice.AccessibilityServiceInfo
 import android.os.SystemClock
 import android.view.KeyEvent
 import android.view.accessibility.AccessibilityEvent
@@ -11,6 +12,12 @@ class RemoteShortcutService : AccessibilityService() {
     private var firstPressAt = 0L
 
     override fun onServiceConnected() {
+        super.onServiceConnected()
+
+        val info = serviceInfo
+        info.flags = info.flags or AccessibilityServiceInfo.FLAG_REQUEST_FILTER_KEY_EVENTS
+        serviceInfo = info
+
         instance = WeakReference(this)
     }
 
@@ -18,13 +25,14 @@ class RemoteShortcutService : AccessibilityService() {
     override fun onInterrupt() = Unit
 
     override fun onKeyEvent(event: KeyEvent): Boolean {
-        if (event.action != KeyEvent.ACTION_UP) return false
-
         val expectedKey = Config.shortcutKeyCode(this)
         if (event.keyCode != expectedKey) {
-            resetCounter()
+            if (event.action == KeyEvent.ACTION_UP) resetCounter()
             return false
         }
+
+        // Consume the configured shortcut key so the foreground app does not also act on it.
+        if (event.action != KeyEvent.ACTION_UP) return true
 
         val now = SystemClock.elapsedRealtime()
         val window = Config.shortcutWindowMs(this)
@@ -40,7 +48,7 @@ class RemoteShortcutService : AccessibilityService() {
             SystemHome.open(this)
         }
 
-        return false
+        return true
     }
 
     private fun resetCounter() {
