@@ -1,7 +1,7 @@
 package com.example.directlaunchtv
 
 import android.accessibilityservice.AccessibilityService
-import android.accessibilityservice.AccessibilityServiceInfo
+import android.content.Intent
 import android.os.SystemClock
 import android.view.KeyEvent
 import android.view.accessibility.AccessibilityEvent
@@ -10,29 +10,33 @@ import java.lang.ref.WeakReference
 class RemoteShortcutService : AccessibilityService() {
     private var count = 0
     private var firstPressAt = 0L
+    private var lastRedirectAt = 0L
 
     override fun onServiceConnected() {
-        super.onServiceConnected()
-
-        val info = serviceInfo
-        info.flags = info.flags or AccessibilityServiceInfo.FLAG_REQUEST_FILTER_KEY_EVENTS
-        serviceInfo = info
-
         instance = WeakReference(this)
     }
 
-    override fun onAccessibilityEvent(event: AccessibilityEvent?) = Unit
+    override fun onAccessibilityEvent(event: AccessibilityEvent?) {
+        val packageName = event?.packageName?.toString() ?: return
+        if (Config.googleTvBypassActive(this)) return
+        if (!SystemHome.isSystemHomePackage(this, packageName)) return
+
+        val now = SystemClock.elapsedRealtime()
+        if (now - lastRedirectAt < 1200L) return
+        lastRedirectAt = now
+        launchTarget()
+    }
+
     override fun onInterrupt() = Unit
 
     override fun onKeyEvent(event: KeyEvent): Boolean {
+        if (event.action != KeyEvent.ACTION_UP) return false
+
         val expectedKey = Config.shortcutKeyCode(this)
         if (event.keyCode != expectedKey) {
-            if (event.action == KeyEvent.ACTION_UP) resetCounter()
+            resetCounter()
             return false
         }
-
-        // Consume the configured shortcut key so the foreground app does not also act on it.
-        if (event.action != KeyEvent.ACTION_UP) return true
 
         val now = SystemClock.elapsedRealtime()
         val window = Config.shortcutWindowMs(this)
@@ -48,7 +52,16 @@ class RemoteShortcutService : AccessibilityService() {
             SystemHome.open(this)
         }
 
-        return true
+        return false
+    }
+
+    private fun launchTarget() {
+        val pkg = Config.targetPackage(this) ?: return
+        val intent = packageManager.getLeanbackLaunchIntentForPackage(pkg)
+            ?: packageManager.getLaunchIntentForPackage(pkg)
+            ?: return
+        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED)
+        runCatching { startActivity(intent) }
     }
 
     private fun resetCounter() {
